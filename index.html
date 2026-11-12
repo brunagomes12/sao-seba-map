@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e7c86">
 <title>Sebá Map 🌴</title>
+<meta name="description" content="Mapa 3D das praias, trilhas e passeios de São Sebastião. Marque onde você já foi!">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌴</text></svg>">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -14,48 +15,61 @@
 :root {
   --sea: #0e7c86; --sea-deep: #0a4f5c; --foam: #e6f6f4;
   --sand: #fff6e6; --sand-2: #f6e3c3; --coral: #ff6b4a; --sun: #ffc23d;
-  --leaf: #2f9e5b; --ink: #17323a; --muted: #5d7479;
+  --leaf: #2f9e5b; --sky: #3fa7e0; --berry: #b84fd1; --ink: #17323a; --muted: #5d7479;
   --card: rgba(255, 252, 245, .94); --shadow: 0 10px 30px rgba(10, 79, 92, .18);
   --r: 22px;
   --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; }
-body { font-family: 'DM Sans', system-ui, sans-serif; color: var(--ink); background: var(--foam); -webkit-tap-highlight-color: transparent; }
+body { font-family: 'DM Sans', system-ui, sans-serif; color: var(--ink); background: #bfe7f0; -webkit-tap-highlight-color: transparent; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
-#map { position: fixed; inset: 0; background: #aad3df; }
-.leaflet-tile-pane { filter: saturate(1.15) hue-rotate(-6deg) brightness(1.03); }
-.leaflet-control-attribution { font-size: 10px; }
+#map { position: fixed; inset: 0; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+
+/* Splash */
+.splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: radial-gradient(circle at 50% 120%, var(--sun), #ff9f6b 30%, #2bb3b1 65%, var(--sea-deep)); color: #fff; text-align: center; transition: opacity .7s, visibility .7s; }
+.splash.gone { opacity: 0; visibility: hidden; }
+.splash h1 { font-family: 'Fraunces', serif; font-size: clamp(40px, 10vw, 72px); margin: 0; color: #fff; }
+.splash p { margin: 8px 0 0; opacity: .9; }
+.wave { font-size: 44px; display: inline-block; animation: bob 1.4s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-10px) rotate(-8deg); } }
 
 /* Header */
 .hud { position: fixed; z-index: 500; top: calc(12px + var(--safe-t)); left: 12px; right: 12px; display: grid; gap: 8px; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 .brand { background: var(--card); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--r); padding: 12px 16px 14px; box-shadow: var(--shadow); }
 .brand-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-h1 { font-family: 'Fraunces', serif; font-weight: 800; font-size: 22px; margin: 0; letter-spacing: -.02em; color: var(--sea-deep); }
-h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+.brand h1 { font-family: 'Fraunces', serif; font-weight: 800; font-size: 22px; margin: 0; letter-spacing: -.02em; color: var(--sea-deep); }
+.brand h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
 .count { font-weight: 700; font-size: 13px; color: var(--sea); white-space: nowrap; }
-.bar { position: relative; height: 12px; margin-top: 8px; border-radius: 99px; background: var(--sand-2); overflow: hidden; }
+.bar { position: relative; height: 12px; margin-top: 8px; border-radius: 99px; background: var(--sand-2); }
 .bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--sea), #19b3a5 60%, var(--sun)); transition: width .6s cubic-bezier(.2, .9, .3, 1.3); }
-.bar i::after { content: '🏄'; position: absolute; right: -6px; top: -6px; font-size: 16px; }
-.msg { font-size: 12.5px; color: var(--muted); margin-top: 6px; min-height: 1em; }
+.bar i::after { content: '🏄'; position: absolute; right: -10px; top: -9px; font-size: 18px; }
+.msg { font-size: 12.5px; color: var(--muted); margin-top: 7px; min-height: 1em; }
 
 .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .chips::-webkit-scrollbar { display: none; }
 .chip { flex: none; background: var(--card); backdrop-filter: blur(10px); padding: 9px 14px; border-radius: 99px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 14px rgba(10, 79, 92, .14); }
 .chip[aria-pressed="true"] { background: var(--sea-deep); color: #fff; }
 
-/* Markers */
-.pin { position: relative; width: 40px; height: 40px; border-radius: 50% 50% 50% 6px; transform: rotate(-45deg); display: grid; place-items: center; box-shadow: 0 6px 14px rgba(0, 0, 0, .25); border: 3px solid #fff; transition: transform .2s; }
+/* Markers: maplibre owns the outer element's transform, so the pin is a child */
+.mk { cursor: pointer; }
+.pin { position: relative; width: 40px; height: 40px; border-radius: 50% 50% 50% 6px; transform: rotate(-45deg); display: grid; place-items: center; box-shadow: 0 6px 14px rgba(0, 0, 0, .3); border: 3px solid #fff; transition: transform .25s cubic-bezier(.2, .9, .3, 1.5); }
 .pin span { transform: rotate(45deg); font-size: 19px; line-height: 1; }
 .pin--praia { background: var(--sun); }
 .pin--trilha { background: var(--leaf); }
-.pin--cachoeira { background: #3fa7e0; }
-.pin.on { transform: rotate(-45deg) scale(1.25); }
-.pin.done { background: #cfd8d6; filter: grayscale(1); opacity: .6; }
-.pin.done::after { content: '✓'; position: absolute; transform: rotate(45deg); top: -8px; right: -8px; width: 18px; height: 18px; border-radius: 50%; background: var(--leaf); color: #fff; font: 700 12px/18px 'DM Sans'; text-align: center; filter: none; }
+.pin--cachoeira { background: var(--sky); }
+.pin--passeio { background: var(--berry); }
+.mk:hover .pin { transform: rotate(-45deg) scale(1.12); }
+.mk.on .pin { transform: rotate(-45deg) scale(1.3); }
+.mk.on { z-index: 2; }
+.mk.done .pin { background: #cfd8d6; opacity: .65; }
+.mk.done .pin span { filter: grayscale(1); }
+.mk.done .pin::after { content: '✓'; position: absolute; transform: rotate(45deg); top: -9px; right: -9px; width: 20px; height: 20px; border-radius: 50%; background: var(--leaf); color: #fff; font: 700 12px/20px 'DM Sans'; text-align: center; }
+.mk.hide { display: none; }
 
-/* Sheet (list + detail) */
+/* Sheet */
 .sheet { position: fixed; z-index: 600; left: 0; right: 0; bottom: 0; background: var(--sand); border-radius: var(--r) var(--r) 0 0; box-shadow: 0 -10px 30px rgba(10, 79, 92, .2); display: flex; flex-direction: column; height: 72vh; height: 72dvh; transform: translateY(calc(100% - 132px - var(--safe-b))); transition: transform .35s cubic-bezier(.2, .9, .3, 1); }
 .sheet.open { transform: none; }
 .handle { padding: 10px 16px 6px; text-align: left; width: 100%; }
@@ -68,7 +82,7 @@ h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var
 .item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border-radius: 16px; text-align: left; }
 .item:hover, .item:focus-visible { background: #fff; outline: none; }
 .dot { flex: none; width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; font-size: 20px; }
-.dot--praia { background: #ffe7a8; } .dot--trilha { background: #c9efd6; } .dot--cachoeira { background: #cfe9f8; }
+.dot--praia { background: #ffe7a8; } .dot--trilha { background: #c9efd6; } .dot--cachoeira { background: #cfe9f8; } .dot--passeio { background: #f0d6f7; }
 .item .t { font-weight: 700; display: block; }
 .item .s { font-size: 13px; color: var(--muted); }
 .item.done .t { text-decoration: line-through; text-decoration-color: var(--leaf); text-decoration-thickness: 2px; color: var(--muted); }
@@ -77,12 +91,13 @@ h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var
 .empty { text-align: center; color: var(--muted); padding: 24px; }
 
 /* Detail card */
-.card { position: fixed; z-index: 700; left: 10px; right: 10px; bottom: calc(10px + var(--safe-b)); background: var(--sand); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; transform: translateY(120%); transition: transform .35s cubic-bezier(.2, .9, .3, 1.15); }
+.card { position: fixed; z-index: 700; left: 10px; right: 10px; bottom: calc(10px + var(--safe-b)); background: var(--sand); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; transform: translateY(130%); transition: transform .4s cubic-bezier(.2, .9, .3, 1.15); }
 .card.show { transform: none; }
-.card-top { padding: 18px 18px 14px; color: #fff; position: relative; }
+.card-top { padding: 18px 18px 16px; color: #fff; position: relative; }
 .card-top.praia { background: linear-gradient(135deg, #12a5a0, var(--sea-deep)); }
 .card-top.trilha { background: linear-gradient(135deg, #3cb371, #1f6b46); }
 .card-top.cachoeira { background: linear-gradient(135deg, #48b4ea, #1c5f8f); }
+.card-top.passeio { background: linear-gradient(135deg, #d36be8, #6b2a85); }
 .card-top::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 14px; background: radial-gradient(14px 10px at 14px 0, transparent 98%, var(--sand)) repeat-x; background-size: 28px 14px; }
 .kind { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
 .card h2 { font-family: 'Fraunces'; font-size: 26px; margin: 4px 40px 0 0; line-height: 1.1; }
@@ -98,7 +113,13 @@ h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var
 .btn--done:active { transform: translateY(4px); box-shadow: 0 2px 0 #d94b2c; }
 .btn--done.is { background: var(--leaf); box-shadow: 0 6px 0 #1f6b46; }
 
-.fab { position: fixed; z-index: 550; right: 12px; bottom: calc(146px + var(--safe-b)); width: 48px; height: 48px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); font-size: 20px; }
+/* Floating tools */
+.tools { position: fixed; z-index: 550; right: 12px; bottom: calc(146px + var(--safe-b)); display: grid; gap: 8px; }
+.fab { width: 48px; height: 48px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); font-size: 20px; display: grid; place-items: center; }
+.fab b { font-size: 13px; font-weight: 800; color: var(--sea-deep); }
+.fab[aria-pressed="true"] { background: var(--coral); }
+.toast { position: fixed; z-index: 800; left: 50%; top: calc(170px + var(--safe-t)); transform: translate(-50%, -20px); opacity: 0; background: var(--sea-deep); color: #fff; padding: 10px 16px; border-radius: 99px; font-weight: 700; font-size: 14px; box-shadow: var(--shadow); transition: .3s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* Confetti */
 .boom { position: fixed; z-index: 900; pointer-events: none; font-size: 22px; left: 50%; top: 60%; animation: boom 1.1s ease-out forwards; }
@@ -106,13 +127,13 @@ h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var
 
 /* Desktop */
 @media (min-width: 820px) {
-  .hud { left: 16px; right: auto; width: 360px; top: 16px; }
-  .sheet { left: 16px; right: auto; bottom: 16px; width: 360px; top: 196px; height: auto; border-radius: var(--r); transform: none; }
+  .hud { left: 16px; right: auto; width: 380px; top: 16px; }
+  .sheet { left: 16px; right: auto; bottom: 16px; width: 380px; top: 200px; height: auto; border-radius: var(--r); transform: none; }
   .handle { pointer-events: none; }
   .handle::before { display: none; }
   .card { left: auto; right: 16px; bottom: 16px; width: 380px; }
-  .fab { right: 16px; bottom: auto; top: 16px; }
-  .fab.up { top: 16px; }
+  .tools { right: 16px; bottom: auto; top: 16px; }
+  .toast { top: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -120,7 +141,8 @@ h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var
 </style>
 </head>
 <body>
-<div id="map" role="application" aria-label="Mapa de São Sebastião"></div>
+<div class="splash" id="splash"><div><span class="wave">🌊</span><h1>Sebá Map</h1><p>Carregando o litoral…</p></div></div>
+<div id="map" role="application" aria-label="Mapa 3D de São Sebastião"></div>
 
 <header class="hud">
   <div class="brand">
@@ -135,95 +157,131 @@ h1 small { font-family: 'DM Sans'; font-weight: 500; font-size: 12px; color: var
     <button class="chip" data-f="todos" aria-pressed="true">🗺️ Todos</button>
     <button class="chip" data-f="praia" aria-pressed="false">🏖️ Praias</button>
     <button class="chip" data-f="trilha" aria-pressed="false">🥾 Trilhas & cachoeiras</button>
+    <button class="chip" data-f="passeio" aria-pressed="false">🏛️ Passeios</button>
     <button class="chip" id="hideDone" aria-pressed="false">🙈 Esconder visitados</button>
   </nav>
 </header>
 
 <section class="sheet" id="sheet">
   <button class="handle" id="handle" aria-expanded="false"><b>Lugares</b><span id="sub"></span></button>
-  <input class="search" id="q" type="search" placeholder="Buscar praia ou trilha…" autocomplete="off">
+  <input class="search" id="q" type="search" placeholder="Buscar praia, trilha, passeio…" autocomplete="off">
   <ul class="list" id="list"></ul>
 </section>
 
-<button class="fab" id="locate" aria-label="Onde estou">📍</button>
+<div class="tools">
+  <button class="fab" id="dim" aria-label="Alternar 2D/3D" title="2D / 3D"><b>2D</b></button>
+  <button class="fab" id="tour" aria-label="Tour voando pelo litoral" aria-pressed="false" title="Tour">🎬</button>
+  <button class="fab" id="dice" aria-label="Me surpreenda" title="Me surpreenda">🎲</button>
+  <button class="fab" id="locate" aria-label="Onde estou" title="Onde estou">📍</button>
+</div>
+<div class="toast" id="toast"></div>
 
 <article class="card" id="card" aria-live="polite"></article>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="data.js"></script>
 <script>
 const CITY = 'sao-sebastiao';
-const EMOJI = { praia: '🏖️', trilha: '🥾', cachoeira: '💧' };
-const KIND = { praia: 'Praia', trilha: 'Trilha', cachoeira: 'Cachoeira' };
+const SUPABASE_URL = 'https://zedpnwlnndiuxfvgfkyd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_KiGPhYrC8BnilpeGK_m1GA_CBOuzjFM'; // public, read-only via RLS
+const EMOJI = { praia: '🏖️', trilha: '🥾', cachoeira: '💧', passeio: '🏛️' };
+const KIND = { praia: 'Praia', trilha: 'Trilha', cachoeira: 'Cachoeira', passeio: 'Passeio' };
 const KEY = 'seba-map:visited';
-const spots = SPOTS.filter(s => s.cidade === CITY);
 const $ = id => document.getElementById(id);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wide = () => innerWidth >= 820;
 
+let spots = [];
 let visited;
 try { visited = new Set(JSON.parse(localStorage.getItem(KEY)) || []); } catch { visited = new Set(); }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...visited])); } catch {} };
 
-let filter = 'todos', hideDone = false, query = '', current = null;
+let filter = 'todos', hideDone = false, query = '', current = null, is3d = true, touring = false;
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const matches = s =>
-  (filter === 'todos' || (filter === 'praia' ? s.tipo === 'praia' : s.tipo !== 'praia')) &&
-  !(hideDone && visited.has(s.id)) &&
-  (!query || norm(s.nome + ' ' + s.tags.join(' ')).includes(query));
+const icon = s => s.emoji || EMOJI[s.tipo];
+const inFilter = s => filter === 'todos' || (filter === 'trilha' ? s.tipo === 'trilha' || s.tipo === 'cachoeira' : s.tipo === filter);
+const matches = s => inFilter(s) && !(hideDone && visited.has(s.id)) && (!query || norm(s.nome + ' ' + s.tags.join(' ')).includes(query));
+
+// Supabase is the source of truth; data.js is the offline fallback (free projects pause when idle).
+async function loadSpots() {
+  try {
+    const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/spots?select=*&cidade=eq.${CITY}`, { headers: { apikey: SUPABASE_KEY }, signal: ctrl.signal });
+    if (!r.ok) throw new Error(r.status);
+    const rows = await r.json();
+    if (!rows.length) throw new Error('empty');
+    return rows.map(({ descricao, ...s }) => ({ ...s, desc: descricao }));
+  } catch (e) {
+    console.warn('Supabase indisponível, usando data.js', e);
+    return SPOTS.filter(s => s.cidade === CITY);
+  }
+}
 
 // Map
-const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([-23.79, -45.6], 11);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-}).addTo(map);
-map.fitBounds(L.latLngBounds(spots.map(s => [s.lat, s.lng])), innerWidth >= 820 ? { paddingTopLeft: [400, 30], paddingBottomRight: [30, 30] } : { paddingTopLeft: [10, 170], paddingBottomRight: [10, 150] });
+const HOME = () => ({ center: wide() ? [-45.72, -23.86] : [-45.60, -23.88], zoom: wide() ? 10.4 : 9.4, pitch: 58, bearing: -8 });
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/liberty',
+  center: [-45.6, -23.8], zoom: 8.5, pitch: 0,
+  maxPitch: 75, attributionControl: { compact: true },
+});
+map.on('load', () => {
+  map.addSource('dem', { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 14, attribution: 'Terreno © Mapzen/AWS' });
+  map.addSource('dem-hs', { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 14 });
+  const firstSymbol = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
+  map.addLayer({ id: 'hills', type: 'hillshade', source: 'dem-hs', paint: { 'hillshade-shadow-color': '#1d4d3a', 'hillshade-highlight-color': '#fff7d6', 'hillshade-exaggeration': 0.45 } }, firstSymbol);
+  map.setTerrain({ source: 'dem', exaggeration: 1.5 });
+  // tropical water
+  for (const id of ['water', 'water_shadow']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', '#5fc4d0');
+  if (map.setSky) map.setSky({ 'sky-color': '#7fd0f0', 'horizon-color': '#ffe2b8', 'fog-color': '#d8f1f5', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.85 });
+});
 
 const markers = {};
-const icon = s => L.divIcon({
-  className: '', iconSize: [40, 40], iconAnchor: [20, 40],
-  html: `<div class="pin pin--${s.tipo}${visited.has(s.id) ? ' done' : ''}${current === s.id ? ' on' : ''}"><span>${EMOJI[s.tipo]}</span></div>`
-});
-spots.forEach(s => {
-  markers[s.id] = L.marker([s.lat, s.lng], { icon: icon(s), title: s.nome, keyboard: true })
-    .on('click', () => open(s.id)).addTo(map);
-});
+function addMarkers() {
+  spots.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'mk';
+    el.innerHTML = `<div class="pin pin--${s.tipo}"><span>${icon(s)}</span></div>`;
+    el.title = s.nome;
+    el.addEventListener('click', e => { e.stopPropagation(); stopTour(); open(s.id); });
+    markers[s.id] = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([s.lng, s.lat]).addTo(map);
+  });
+}
 
 function render() {
-  // markers
   spots.forEach(s => {
-    const m = markers[s.id];
-    m.setIcon(icon(s));
-    if (matches(s) || !query && current === s.id) m.addTo(map); else m.remove();
+    const el = markers[s.id].getElement();
+    el.classList.toggle('done', visited.has(s.id));
+    el.classList.toggle('on', current === s.id);
+    el.classList.toggle('hide', !matches(s) && current !== s.id);
   });
-  // list
   const shown = spots.filter(matches).sort((a, b) => visited.has(a.id) - visited.has(b.id) || b.lng - a.lng);
   $('list').innerHTML = shown.length ? shown.map(s => `
     <li><button class="item${visited.has(s.id) ? ' done' : ''}" data-id="${s.id}">
-      <span class="dot dot--${s.tipo}">${EMOJI[s.tipo]}</span>
+      <span class="dot dot--${s.tipo}">${icon(s)}</span>
       <span><span class="t">${s.nome}</span><span class="s">${KIND[s.tipo]} · ${s.tags.join(' · ')}</span></span>
       ${visited.has(s.id) ? '<span class="ok">✓</span>' : ''}
     </button></li>`).join('') : '<li class="empty">Nada por aqui 🐚</li>';
   $('sub').textContent = `${shown.length} no mapa`;
-  // progress
   const done = spots.filter(s => visited.has(s.id)).length, pct = Math.round(done / spots.length * 100);
   $('count').textContent = `${done} de ${spots.length} · ${pct}%`;
   $('fill').style.width = pct + '%';
   document.querySelector('.bar').setAttribute('aria-valuenow', pct);
   $('msg').textContent =
-    pct === 100 ? '🏆 Lenda de São Sebastião! Hora de atravessar pra Ilhabela.' :
-    pct >= 75 ? '🔥 Reta final, faltam poucas!' :
+    pct === 100 ? '🏆 Lenda de São Sebastião! Próxima parada: Ilhabela.' :
+    pct >= 75 ? '🔥 Reta final, faltam poucos!' :
     pct >= 50 ? '🌊 Metade do litoral desbravado!' :
-    pct >= 25 ? '🐢 Já é quase local, hein?' :
-    done ? '🌱 Começou bem! Bora pra próxima.' : 'Toque num pin e marque onde você já foi ✨';
+    pct >= 25 ? '🐢 Já é quase caiçara, hein?' :
+    done ? '🌱 Começou bem! Bora pro próximo.' : 'Toque num pin e marque onde você já foi ✨';
 }
 
-function open(id) {
+function open(id, { fly = true } = {}) {
   const s = spots.find(x => x.id === id);
   current = id;
   const done = visited.has(id);
   $('card').innerHTML = `
     <div class="card-top ${s.tipo}">
-      <div class="kind">${EMOJI[s.tipo]} ${KIND[s.tipo]}</div>
+      <div class="kind">${icon(s)} ${KIND[s.tipo]}</div>
       <h2>${s.nome}</h2>
       <button class="close" aria-label="Fechar">×</button>
     </div>
@@ -238,19 +296,33 @@ function open(id) {
   $('card').classList.add('show');
   $('sheet').classList.remove('open');
   $('handle').setAttribute('aria-expanded', false);
-  map.flyTo([s.lat, s.lng], Math.max(map.getZoom(), 13), { duration: .6 });
+  if (fly) map.flyTo({
+    center: [s.lng, s.lat], zoom: s.id === 'alcatrazes' ? 11.5 : 13.6,
+    pitch: is3d ? 62 : 0, bearing: is3d ? map.getBearing() + 25 : 0,
+    padding: wide() ? { left: 400, right: 400 } : { bottom: 260, top: 120 },
+    duration: reduced ? 0 : 2200, essential: true,
+  });
   render();
 }
 function close() { current = null; $('card').classList.remove('show'); render(); }
 
 function toggle() {
   const id = current;
-  if (visited.has(id)) visited.delete(id); else { visited.add(id); boom(); }
-  save(); open(id);
+  if (visited.has(id)) visited.delete(id);
+  else {
+    visited.add(id); boom();
+    const n = visited.size;
+    toast(n === spots.length ? '🏆 100%! Você zerou São Sebastião!' : [`🎉 +1! São ${n} agora`, '🌴 Que delícia!', '🐚 Mais uma pra conta!', '☀️ Arrasou!'][n % 4]);
+  }
+  save(); open(id, { fly: false });
 }
 
+let toastT;
+function toast(t) { $('toast').textContent = t; $('toast').classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => $('toast').classList.remove('show'), 2200); }
+
 function boom() {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  navigator.userActivation?.hasBeenActive && navigator.vibrate?.(30);
+  if (reduced) return;
   const bits = ['🎉', '🐚', '🌊', '⭐', '🌴', '🐠', '☀️'];
   for (let i = 0; i < 26; i++) {
     const el = document.createElement('span');
@@ -263,21 +335,34 @@ function boom() {
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1200);
   }
-  navigator.vibrate?.(30);
 }
+
+// Tour: fly east → west through what's left to visit.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function tour() {
+  touring = true; $('tour').setAttribute('aria-pressed', true); $('tour').textContent = '⏹️';
+  const stops = spots.filter(s => matches(s) && !visited.has(s.id) && s.id !== 'alcatrazes').sort((a, b) => b.lng - a.lng);
+  if (!stops.length) toast('Nada pra visitar com esse filtro 🎉');
+  for (const s of stops) {
+    if (!touring) break;
+    open(s.id); await sleep(reduced ? 2500 : 4200);
+  }
+  stopTour();
+}
+function stopTour() { touring = false; $('tour').setAttribute('aria-pressed', false); $('tour').textContent = '🎬'; }
 
 // Events
 $('card').addEventListener('click', e => {
   if (e.target.closest('.close')) close();
   else if (e.target.closest('#toggle')) toggle();
 });
-$('list').addEventListener('click', e => { const b = e.target.closest('.item'); if (b) open(b.dataset.id); });
+$('list').addEventListener('click', e => { const b = e.target.closest('.item'); if (b) { stopTour(); open(b.dataset.id); } });
 $('handle').addEventListener('click', () => {
   const o = $('sheet').classList.toggle('open');
   $('handle').setAttribute('aria-expanded', o);
   if (o) $('card').classList.remove('show');
 });
-$('q').addEventListener('focus', () => { $('sheet').classList.add('open'); $('card').classList.remove('show'); });
+$('q').addEventListener('focus', () => { if (!wide()) { $('sheet').classList.add('open'); $('card').classList.remove('show'); } });
 $('q').addEventListener('input', e => { query = norm(e.target.value.trim()); render(); });
 document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => {
   filter = b.dataset.f;
@@ -290,21 +375,43 @@ $('hideDone').addEventListener('click', e => {
   e.currentTarget.textContent = hideDone ? '👀 Mostrar visitados' : '🙈 Esconder visitados';
   render();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-map.on('click', () => { if (current) close(); });
+$('dim').addEventListener('click', () => {
+  is3d = !is3d;
+  $('dim').innerHTML = `<b>${is3d ? '2D' : '3D'}</b>`;
+  map.setTerrain(is3d ? { source: 'dem', exaggeration: 1.5 } : null);
+  map.easeTo({ pitch: is3d ? 58 : 0, bearing: is3d ? -8 : 0, duration: 900 });
+});
+$('tour').addEventListener('click', () => touring ? stopTour() : tour());
+$('dice').addEventListener('click', () => {
+  stopTour();
+  const pool = spots.filter(s => matches(s) && !visited.has(s.id));
+  if (!pool.length) return toast('Você já foi em tudo daqui! 🏆');
+  const s = pool[Math.floor(Math.random() * pool.length)];
+  toast(`🎲 Que tal… ${s.nome}?`); open(s.id);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { stopTour(); close(); } });
+map.on('click', () => { if (current) { stopTour(); close(); } });
+map.on('dragstart', stopTour);
 
 let me;
 $('locate').addEventListener('click', () => {
-  if (!navigator.geolocation) return alert('Seu navegador não tem localização 😕');
+  if (!navigator.geolocation) return toast('Seu navegador não tem localização 😕');
   navigator.geolocation.getCurrentPosition(p => {
-    const ll = [p.coords.latitude, p.coords.longitude];
-    me?.remove();
-    me = L.circleMarker(ll, { radius: 9, color: '#fff', weight: 3, fillColor: '#ff6b4a', fillOpacity: 1 }).addTo(map).bindTooltip('Você está aqui');
-    map.flyTo(ll, 14);
-  }, () => alert('Não consegui pegar sua localização 😕'), { enableHighAccuracy: true, timeout: 10000 });
+    const ll = [p.coords.longitude, p.coords.latitude];
+    if (!me) { const el = document.createElement('div'); el.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#ff6b4a;border:3px solid #fff;box-shadow:0 0 0 6px rgba(255,107,74,.3)'; me = new maplibregl.Marker({ element: el }); }
+    me.setLngLat(ll).addTo(map);
+    map.flyTo({ center: ll, zoom: 14 });
+  }, () => toast('Não consegui pegar sua localização 😕'), { enableHighAccuracy: true, timeout: 10000 });
 });
 
-render();
+// Boot
+// ponytail: don't wait for every terrain tile; 2.5s cap then show what we have
+Promise.all([loadSpots(), Promise.race([new Promise(r => map.once('load', r)), sleep(2500)])]).then(([data]) => {
+  spots = data;
+  addMarkers(); render();
+  $('splash').classList.add('gone');
+  map.flyTo({ ...HOME(), duration: reduced ? 0 : 3500, essential: true });
+});
 </script>
 </body>
 </html>

@@ -36,4 +36,13 @@ const SPOTS = [
   { id: 'trilha-calhetas', nome: 'Escadaria de Calhetas', tipo: 'trilha', cidade: 'sao-sebastiao', lat: -23.8360, lng: -45.5180, desc: 'Descida curta e íngreme até as piscinas naturais de Calhetas.', tags: ['fácil', '~10min'] },
   { id: 'cachoeira-camburi', nome: 'Cachoeira do Camburi', tipo: 'cachoeira', cidade: 'sao-sebastiao', lat: -23.7600, lng: -45.6550, desc: 'Poços de água geladinha no pé da serra, a poucos minutos da praia.', tags: ['fácil', 'banho gelado'] },
   { id: 'cachoeira-itu', nome: 'Cachoeira do Ribeirão do Itu', tipo: 'cachoeira', cidade: 'sao-sebastiao', lat: -23.7700, lng: -45.6200, desc: 'Queda d’água com poço pra banho, trilha na mata a partir de Boiçucanga.', tags: ['moderada', 'banho gelado'] },
+
+  // Passeios & cultura
+  { id: 'centro-historico', nome: 'Centro Histórico', tipo: 'passeio', emoji: '🏛️', cidade: 'sao-sebastiao', lat: -23.8040, lng: -45.4020, desc: 'Casarões coloniais, Igreja Matriz e a orla da Rua da Praia. Sorvete na mão e vista pro canal.', tags: ['história', 'a pé'] },
+  { id: 'arte-sacra', nome: 'Museu de Arte Sacra', tipo: 'passeio', emoji: '⛪', cidade: 'sao-sebastiao', lat: -23.8052, lng: -45.4033, desc: 'Na Capela de São Gonçalo, uma das construções mais antigas do litoral norte.', tags: ['história', 'museu'] },
+  { id: 'balsa', nome: 'Balsa pra Ilhabela', tipo: 'passeio', emoji: '⛴️', cidade: 'sao-sebastiao', lat: -23.8000, lng: -45.3990, desc: 'Uns 15 minutos de travessia, às vezes com golfinho de bônus. Próxima fase: Ilhabela!', tags: ['travessia', 'canal'] },
+  { id: 'mirante-toque-toque', nome: 'Mirante de Toque-Toque', tipo: 'passeio', emoji: '🔭', cidade: 'sao-sebastiao', lat: -23.8318, lng: -45.5140, desc: 'Parada obrigatória na Rio-Santos: as praias da Costa Sul inteirinhas lá embaixo.', tags: ['vista', 'pôr do sol'] },
+  { id: 'ilha-das-couves', nome: 'Ilha das Couves', tipo: 'passeio', emoji: '🏝️', cidade: 'sao-sebastiao', lat: -23.8560, lng: -45.4980, desc: 'Água cristalina e peixinhos. Vai de barco saindo de Toque-Toque ou Barequeçaba.', tags: ['barco', 'snorkel'] },
+  { id: 'montao-de-trigo', nome: 'Ilha Montão de Trigo', tipo: 'passeio', emoji: '🏝️', cidade: 'sao-sebastiao', lat: -23.8650, lng: -45.7760, desc: 'Ilha com vilinha caiçara isolada no meio do mar. Passeio de barco raiz.', tags: ['barco', 'caiçara'] },
+  { id: 'alcatrazes', nome: 'Arquipélago de Alcatrazes', tipo: 'passeio', emoji: '🐦', cidade: 'sao-sebastiao', lat: -24.1000, lng: -45.6950, desc: 'Refúgio de vida silvestre lá longe no mar: aves marinhas e um dos melhores mergulhos do Brasil.', tags: ['mergulho', 'aventura'] },
 ];
