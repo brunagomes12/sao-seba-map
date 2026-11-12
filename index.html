@@ -173,6 +173,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   <button class="fab" id="tour" aria-label="Tour voando pelo litoral" aria-pressed="false" title="Tour">🎬</button>
   <button class="fab" id="dice" aria-label="Me surpreenda" title="Me surpreenda">🎲</button>
   <button class="fab" id="locate" aria-label="Onde estou" title="Onde estou">📍</button>
+  <button class="fab" id="share" aria-label="Sincronizar com outro aparelho" title="Sincronizar com outro aparelho">🔗</button>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -195,6 +196,36 @@ let spots = [];
 let visited;
 try { visited = new Set(JSON.parse(localStorage.getItem(KEY)) || []); } catch { visited = new Set(); }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...visited])); } catch {} };
+
+// Sync: progress lives in Supabase under a secret "travel code" (uuid). Share it via link #c=<code>.
+const CODE_KEY = 'seba-map:code', SYNCED_KEY = 'seba-map:synced';
+let code, synced = false;
+try {
+  const fromLink = new URLSearchParams(location.hash.slice(1)).get('c');
+  code = /^[0-9a-f-]{36}$/i.test(fromLink || '') ? fromLink.toLowerCase() : localStorage.getItem(CODE_KEY) || crypto.randomUUID();
+  if (localStorage.getItem(CODE_KEY) !== code) localStorage.removeItem(SYNCED_KEY);
+  localStorage.setItem(CODE_KEY, code);
+  synced = localStorage.getItem(SYNCED_KEY) === code;
+} catch { code = crypto.randomUUID(); }
+if (location.hash) history.replaceState(null, '', location.pathname);
+const rpc = (fn, body) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+  method: 'POST', headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+}).then(r => { if (!r.ok) throw new Error(r.status); return r.status === 204 ? null : r.json(); });
+const pushVisit = (id, done) => rpc('set_visit', { p_code: code, p_spot: id, p_done: done }).catch(e => console.warn('sync falhou', e));
+// First sync on a device merges local + remote; after that the server wins (so un-marking elsewhere sticks).
+async function syncVisits() {
+  try {
+    const remote = new Set(await rpc('get_visits', { p_code: code }));
+    if (!synced) {
+      for (const id of visited) if (!remote.has(id) && spots.some(s => s.id === id)) { remote.add(id); pushVisit(id, true); }
+      synced = true;
+      try { localStorage.setItem(SYNCED_KEY, code); } catch {}
+    }
+    visited = remote;
+    save(); render();
+    if (current) open(current, { fly: false });
+  } catch (e) { console.warn('sync falhou, seguindo offline', e); }
+}
 
 let filter = 'todos', hideDone = false, query = '', current = null, is3d = true, touring = false;
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -314,7 +345,7 @@ function toggle() {
     const n = visited.size;
     toast(n === spots.length ? '🏆 100%! Você zerou São Sebastião!' : [`🎉 +1! São ${n} agora`, '🌴 Que delícia!', '🐚 Mais uma pra conta!', '☀️ Arrasou!'][n % 4]);
   }
-  save(); open(id, { fly: false });
+  save(); pushVisit(id, visited.has(id)); open(id, { fly: false });
 }
 
 let toastT;
@@ -404,11 +435,20 @@ $('locate').addEventListener('click', () => {
   }, () => toast('Não consegui pegar sua localização 😕'), { enableHighAccuracy: true, timeout: 10000 });
 });
 
+$('share').addEventListener('click', async () => {
+  const url = `${location.origin}${location.pathname}#c=${code}`;
+  try {
+    if (navigator.share) await navigator.share({ title: 'Sebá Map', text: 'Meu progresso no Sebá Map (abra no outro aparelho)', url });
+    else { await navigator.clipboard.writeText(url); toast('🔗 Link copiado! Abra no outro aparelho'); }
+  } catch (e) { if (e.name !== 'AbortError') prompt('Copie este link e abra no outro aparelho:', url); }
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && spots.length) syncVisits(); });
+
 // Boot
 // ponytail: don't wait for every terrain tile; 2.5s cap then show what we have
 Promise.all([loadSpots(), Promise.race([new Promise(r => map.once('load', r)), sleep(2500)])]).then(([data]) => {
   spots = data;
-  addMarkers(); render();
+  addMarkers(); render(); syncVisits();
   $('splash').classList.add('gone');
   map.flyTo({ ...HOME(), duration: reduced ? 0 : 3500, essential: true });
 });
