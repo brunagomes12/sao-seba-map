@@ -213,9 +213,12 @@ const rpc = (fn, body) => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
 }).then(r => { if (!r.ok) throw new Error(r.status); return r.status === 204 ? null : r.json(); });
 const pushVisit = (id, done) => rpc('set_visit', { p_code: code, p_spot: id, p_done: done }).catch(e => console.warn('sync falhou', e));
 // First sync on a device merges local + remote; after that the server wins (so un-marking elsewhere sticks).
+let edits = 0; // bumped on every local toggle; a sync that raced with one is discarded
 async function syncVisits() {
   try {
+    const e0 = edits;
     const remote = new Set(await rpc('get_visits', { p_code: code }));
+    if (edits !== e0) return; // ponytail: stale response; next sync (refocus/reload) catches up
     if (!synced) {
       for (const id of visited) if (!remote.has(id) && spots.some(s => s.id === id)) { remote.add(id); pushVisit(id, true); }
       synced = true;
@@ -345,7 +348,7 @@ function toggle() {
     const n = visited.size;
     toast(n === spots.length ? '🏆 100%! Você zerou São Sebastião!' : [`🎉 +1! São ${n} agora`, '🌴 Que delícia!', '🐚 Mais uma pra conta!', '☀️ Arrasou!'][n % 4]);
   }
-  save(); pushVisit(id, visited.has(id)); open(id, { fly: false });
+  edits++; save(); pushVisit(id, visited.has(id)); open(id, { fly: false });
 }
 
 let toastT;
